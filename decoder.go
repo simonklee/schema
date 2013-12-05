@@ -43,11 +43,17 @@ func (d *Decoder) Decode(dst interface{}, src map[string][]string) error {
 	errors := MultiError{}
 	for path, values := range src {
 		if parts, err := d.cache.parsePath(path, t); err == nil {
+			if len(parts) == 0 {
+				// ignore empty parameter
+				continue
+			}
+
 			if err = d.decode(v, path, parts, values); err != nil {
 				errors[path] = err
 			}
 		} else {
-			errors[path] = fmt.Errorf("schema: invalid path %q", path)
+			// ignore invalid path
+			continue
 		}
 	}
 	if len(errors) > 0 {
@@ -76,6 +82,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 	}
 
 	// Dereference if needed.
+	ov := v
 	t := v.Type()
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -114,7 +121,7 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 		for key, value := range values {
 			if value == "" {
 				// We are just ignoring empty values for now.
-				continue
+				ov.Set(reflect.Zero(ov.Type()))
 			} else if item := conv(value); item.IsValid() {
 				if isPtrElem {
 					ptr := reflect.New(elemT)
@@ -133,7 +140,8 @@ func (d *Decoder) decode(v reflect.Value, path string, parts []pathPart,
 	} else {
 		if values[0] == "" {
 			// We are just ignoring empty values for now.
-			return nil
+			ov.Set(reflect.Zero(ov.Type()))
+			//return nil
 		} else if conv := d.cache.conv[t]; conv != nil {
 			if value := conv(values[len(values)-1]); value.IsValid() {
 				v.Set(value)
