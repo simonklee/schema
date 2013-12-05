@@ -48,6 +48,10 @@ var converters = map[reflect.Type]Converter{
 }
 
 func convertBool(value string) reflect.Value {
+	if value == "on" {
+		return reflect.ValueOf(true)
+	}
+
 	if v, err := strconv.ParseBool(value); err == nil {
 		return reflect.ValueOf(v)
 	}
